@@ -78,7 +78,16 @@ sudo systemctl start rtc-sync.timer
 *   開機初始化：`systemctl status rtc-init`
 *   定時同步器：`systemctl status rtc-sync.timer`
 
-## 疑難排解
+## 疑難排解與電池優化
+
+### 電池壽命優化 (Battery Optimization)
+DS1302 模組在搭配非充電電池（如 AAA 或 CR2032）時，常因模組硬體設計缺陷導致耗電過快。本專案已實作以下優化：
+1.  **軟體禁用涓流充電 (Trickle Charge Disable)**：驅動程式會在初始化時強制關閉內部充電功能，防止對一般電池進行錯誤充電。
+2.  **時鐘停止偵測 (Clock Halt Detection)**：自動偵測電力流失狀態。
+
+**硬體建議 (進階)**：
+*   **物理切斷充電路徑**：若電池依然耗電過快，建議將模組上的 `R1` 電阻或 `D1` 二極體解焊或挑斷，防止 VCC 斷電時發生逆流漏電。
+*   **電壓檢查**：AAA 電池組應維持在 3.0V 以上，若低於 2.8V 可能導致 RTC 運作不穩。
 
 | 現象 | 可能原因 | 對策 |
 | :--- | :--- | :--- |

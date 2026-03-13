@@ -6,8 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Initial Release (Lite version)**
-- **DS1302 Driver**: Low-level GPIO bit-banging implementation for DS1302 RTC module.
-- **rtc_init**: Boot-time script to restore system clock from RTC (Phase 4).
+- **DS1302 Driver**: Low-level GPIO bit-banging implementation with BCD support and **Trickle Charge Disable** to protect non-rechargeable batteries.
+- **rtc_init**: Boot-time script to restore system clock from RTC (Phase 4) with **Battery Failure detection**.
 - **rtc_sync**: Periodic synchronization script to update RTC from NTP/System clock (Phase 5).
 - **Configuration System**: Centralized GPIO and log management via `config/rtc.conf`.
 - **Systemd Integration**: Added service and timer files for automated operation.

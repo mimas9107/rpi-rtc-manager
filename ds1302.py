@@ -12,6 +12,7 @@ REG_MONTH   = 0x88
 REG_DAY     = 0x8A
 REG_YEAR    = 0x8C
 REG_WP      = 0x8E
+REG_TC      = 0x90 # Trickle Charge Register
 REG_BURST   = 0xBE
 
 class DS1302:
@@ -24,6 +25,9 @@ class DS1302:
         GPIO.setwarnings(False)
         GPIO.setup(self.clk, GPIO.OUT)
         GPIO.setup(self.rst, GPIO.OUT)
+        
+        # Power-on Safety: Ensure Trickle Charger is DISABLED to save battery
+        self._disable_trickle_charge()
         
     def _write_byte(self, value):
         GPIO.setup(self.dat, GPIO.OUT)
@@ -46,6 +50,16 @@ class DS1302:
             time.sleep(0.00001)
         return value
 
+    def _disable_trickle_charge(self):
+        """Forces the internal trickle charger to OFF state."""
+        GPIO.output(self.rst, 1)
+        self._write_byte(REG_TC)
+        # 0x5C is a typical 'Disable' pattern for DS1302, 
+        # but anything not matching 1010xxxx usually disables it.
+        # We use 0x00 to be absolutely sure.
+        self._write_byte(0x00)
+        GPIO.output(self.rst, 0)
+
     def _bcd_to_dec(self, bcd):
         return (bcd & 0x0F) + ((bcd >> 4) * 10)
 
@@ -55,21 +69,18 @@ class DS1302:
     def is_clock_halted(self):
         """Checks the CH (Clock Halt) bit in the seconds register."""
         GPIO.output(self.rst, 1)
-        self._write_byte(REG_SECONDS | 0x01) # Read seconds
+        self._write_byte(REG_SECONDS | 0x01)
         seconds_reg = self._read_byte()
         GPIO.output(self.rst, 0)
-        # Bit 7 is CH
         return (seconds_reg & 0x80) != 0
 
     def read_time(self):
         """Returns epoch_sec (int)"""
         if self.is_clock_halted():
-            # If halted, it means power was lost.
             return 0
             
         GPIO.output(self.rst, 1)
-        # Burst read
-        self._write_byte(REG_BURST | 0x01) # Read mode
+        self._write_byte(REG_BURST | 0x01)
         
         sec = self._bcd_to_dec(self._read_byte() & 0x7F)
         min = self._bcd_to_dec(self._read_byte() & 0x7F)
@@ -99,9 +110,8 @@ class DS1302:
         
         # Burst write
         GPIO.output(self.rst, 1)
-        self._write_byte(REG_BURST) # Write mode
+        self._write_byte(REG_BURST)
         
-        # Second (and ensure CH = 0 to start clock)
         self._write_byte(self._dec_to_bcd(dt.second) & 0x7F)
         self._write_byte(self._dec_to_bcd(dt.minute))
         self._write_byte(self._dec_to_bcd(dt.hour))
