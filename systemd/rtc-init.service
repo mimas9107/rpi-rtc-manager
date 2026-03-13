@@ -1,0 +1,20 @@
+[Unit]
+Description=Initialize system time from RTC
+# 確保在網路啟動前嘗試設定時間，但若失敗不應阻礙網路啟動
+Before=network.target
+DefaultDependencies=no
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/rpi-rtc-manager/rtc_init.py
+WorkingDirectory=/opt/rpi-rtc-manager
+# 關鍵：防止腳本永久掛起導致開機阻塞
+TimeoutStartSec=10
+# 即使失敗也視為成功，不觸發系統層級的錯誤狀態
+SuccessExitStatus=0 1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

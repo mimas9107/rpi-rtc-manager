@@ -1,0 +1,12 @@
+[Unit]
+Description=Synchronize RTC with NTP time
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/rpi-rtc-manager/rtc_sync.py
+WorkingDirectory=/opt/rpi-rtc-manager
+
+[Install]
+WantedBy=multi-user.target
