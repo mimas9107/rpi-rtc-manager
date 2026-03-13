@@ -14,3 +14,4 @@ All notable changes to this project will be documented in this file.
 - **Test Suite**: `ds1302_test.py` for hardware validation (Phase 2 & 3).
 - **Logging**: Integrated logging to `/opt/rpi-rtc-manager/logs/rpi-rtc-manager.log`.
 - **Documentation**: Added `README.md`, `CHANGELOG.md`, `RPI-RTC-MANAGER-SPEC.md`, and `IMPLEMENTATION-GUIDE.md`.
+- **Validation**: Successfully verified on RPi4 (Hardware & Offline Recovery tests). See `reports/TEST-20260313.md`.
