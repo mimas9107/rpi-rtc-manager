@@ -52,8 +52,21 @@ class DS1302:
     def _dec_to_bcd(self, dec):
         return ((dec // 10) << 4) | (dec % 10)
 
+    def is_clock_halted(self):
+        """Checks the CH (Clock Halt) bit in the seconds register."""
+        GPIO.output(self.rst, 1)
+        self._write_byte(REG_SECONDS | 0x01) # Read seconds
+        seconds_reg = self._read_byte()
+        GPIO.output(self.rst, 0)
+        # Bit 7 is CH
+        return (seconds_reg & 0x80) != 0
+
     def read_time(self):
         """Returns epoch_sec (int)"""
+        if self.is_clock_halted():
+            # If halted, it means power was lost.
+            return 0
+            
         GPIO.output(self.rst, 1)
         # Burst read
         self._write_byte(REG_BURST | 0x01) # Read mode
@@ -63,7 +76,7 @@ class DS1302:
         hour = self._bcd_to_dec(self._read_byte() & 0x3F)
         date = self._bcd_to_dec(self._read_byte() & 0x3F)
         month = self._bcd_to_dec(self._read_byte() & 0x1F)
-        day = self._bcd_to_dec(self._read_byte() & 0x07) # Day of week (1-7)
+        day = self._bcd_to_dec(self._read_byte() & 0x07)
         year = self._bcd_to_dec(self._read_byte() & 0xFF) + 2000
         
         GPIO.output(self.rst, 0)
@@ -75,7 +88,7 @@ class DS1302:
             return 0
 
     def write_time(self, epoch_sec):
-        """Sets RTC time from epoch_sec (int)"""
+        """Sets RTC time from epoch_sec (int). Also clears CH bit."""
         dt = datetime.fromtimestamp(epoch_sec)
         
         # Disable write protect
@@ -88,12 +101,13 @@ class DS1302:
         GPIO.output(self.rst, 1)
         self._write_byte(REG_BURST) # Write mode
         
-        self._write_byte(self._dec_to_bcd(dt.second))
+        # Second (and ensure CH = 0 to start clock)
+        self._write_byte(self._dec_to_bcd(dt.second) & 0x7F)
         self._write_byte(self._dec_to_bcd(dt.minute))
         self._write_byte(self._dec_to_bcd(dt.hour))
         self._write_byte(self._dec_to_bcd(dt.day))
         self._write_byte(self._dec_to_bcd(dt.month))
-        self._write_byte(self._dec_to_bcd(dt.weekday() + 1)) # DS1302 uses 1-7
+        self._write_byte(self._dec_to_bcd(dt.weekday() + 1))
         self._write_byte(self._dec_to_bcd(dt.year % 100))
         
         # Enable write protect

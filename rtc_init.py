@@ -15,25 +15,21 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Global Timeout Handler (Safety first)
+# Global Timeout Handler
 def timeout_handler(signum, frame):
-    logging.error("RTC initialization timed out (5s limit). Exiting to avoid blocking boot.")
+    logging.error("RTC initialization timed out (5s limit). Exiting.")
     sys.exit(1)
 
 signal.signal(signal.SIGALRM, timeout_handler)
-signal.alarm(5) # Give it 5 seconds max (Spec target is < 50ms)
+signal.alarm(5)
 
 def set_system_time(epoch_sec):
     try:
         dt = datetime.fromtimestamp(epoch_sec)
-        # Using -u to ensure UTC if specified, or default local
         time_str = dt.strftime('%Y-%m-%d %H:%M:%S')
         subprocess.run(['date', '-s', time_str], check=True, timeout=2)
         logging.info(f"System time set to: {time_str}")
         return True
-    except subprocess.TimeoutExpired:
-        logging.error("Subprocess 'date -s' timed out.")
-        return False
     except Exception as e:
         logging.error(f"Failed to set system time: {e}")
         return False
@@ -42,27 +38,30 @@ def main():
     try:
         logging.info("Starting rtc_init...")
         rtc = get_rtc()
-        rtc_time = rtc.read_time()
         
+        # Check for power loss (Clock Halt)
+        if rtc.is_clock_halted():
+            logging.error("RTC Battery Failure: Clock Halt (CH) bit detected. Time is invalid. Please check batteries.")
+            return
+
+        rtc_time = rtc.read_time()
         if rtc_time == 0:
-            logging.warning("RTC read failed or returned invalid time (0).")
+            logging.warning("RTC read returned 0. Ignoring.")
             return
 
         dt = datetime.fromtimestamp(rtc_time)
-        logging.info(f"RTC read: {dt.isoformat()}Z")
+        logging.info(f"RTC read successful: {dt.isoformat()}Z")
 
-        # Validation: year >= 2022
         if dt.year < 2022:
-            logging.warning(f"RTC time {dt.year} is invalid (before 2022). Ignoring.")
+            logging.warning(f"RTC time {dt.year} is too old. Ignoring.")
             return
 
-        # Set system clock
         set_system_time(rtc_time)
         
     except Exception as e:
-        logging.error(f"Unexpected error in rtc_init main: {e}")
+        logging.error(f"Error in rtc_init: {e}")
     finally:
-        signal.alarm(0) # Disable alarm
+        signal.alarm(0)
 
 if __name__ == "__main__":
     main()
