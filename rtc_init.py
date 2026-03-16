@@ -25,10 +25,13 @@ signal.alarm(5)
 
 def set_system_time(epoch_sec):
     try:
-        dt = datetime.fromtimestamp(epoch_sec)
-        time_str = dt.strftime('%Y-%m-%d %H:%M:%S')
-        subprocess.run(['date', '-s', time_str], check=True, timeout=2)
-        logging.info(f"System time set to: {time_str}")
+        # Use '@timestamp' syntax to set system time directly from Unix Epoch
+        # This is the most robust way as it avoids any timezone string parsing
+        subprocess.run(['date', '-s', f'@{epoch_sec}'], check=True, timeout=2)
+        
+        # Log the local time for human readability
+        dt_local = datetime.fromtimestamp(epoch_sec)
+        logging.info(f"System time set to: {dt_local.strftime('%Y-%m-%d %H:%M:%S')} (from epoch @{epoch_sec})")
         return True
     except Exception as e:
         logging.error(f"Failed to set system time: {e}")
