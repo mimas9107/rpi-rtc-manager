@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
-from datetime import datetime
+import calendar
+from datetime import datetime, timezone
 from config import config
 
 # DS1302 Registers
@@ -54,9 +55,7 @@ class DS1302:
         """Forces the internal trickle charger to OFF state."""
         GPIO.output(self.rst, 1)
         self._write_byte(REG_TC)
-        # 0x5C is a typical 'Disable' pattern for DS1302, 
-        # but anything not matching 1010xxxx usually disables it.
-        # We use 0x00 to be absolutely sure.
+        # 0x00 to be absolutely sure.
         self._write_byte(0x00)
         GPIO.output(self.rst, 0)
 
@@ -75,7 +74,7 @@ class DS1302:
         return (seconds_reg & 0x80) != 0
 
     def read_time(self):
-        """Returns epoch_sec (int)"""
+        """Returns epoch_sec (int) in UTC"""
         if self.is_clock_halted():
             return 0
             
@@ -93,14 +92,17 @@ class DS1302:
         GPIO.output(self.rst, 0)
         
         try:
+            # Create a naive datetime object assuming it's UTC
             dt = datetime(year, month, date, hour, min, sec)
-            return int(dt.timestamp())
+            # Use calendar.timegm to convert UTC tuple to timestamp (correctly ignores local timezone)
+            return int(calendar.timegm(dt.timetuple()))
         except ValueError:
             return 0
 
     def write_time(self, epoch_sec):
-        """Sets RTC time from epoch_sec (int). Also clears CH bit."""
-        dt = datetime.fromtimestamp(epoch_sec)
+        """Sets RTC time from epoch_sec (int). RTC stores UTC time."""
+        # Convert epoch to UTC datetime object explicitly
+        dt = datetime.fromtimestamp(epoch_sec, tz=timezone.utc)
         
         # Disable write protect
         GPIO.output(self.rst, 1)
