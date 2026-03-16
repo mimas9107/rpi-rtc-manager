@@ -1,17 +1,27 @@
-# Changelog
+# 更新日誌 (Changelog)
 
-All notable changes to this project will be documented in this file.
+本專案的所有重大更新都將記錄在此檔案中。
+
+## [0.1.1] - 2026-03-16
+
+### 新增
+- **文件鎖機制 (File Lock)**：在 `rtc_sync.py` 中加入基於 `fcntl` 的文件鎖，防止多個實例同時執行（例如手動觸發與 systemd 定時器衝突）導致的訊號碰撞。
+- **寫入驗證 (Write Verification)**：`rtc_sync.py` 現在在寫入 RTC 後會立即讀回時間，確保資料正確寫入硬體。
+- **增強除錯日誌**：在 `rtc_sync.py` 中加入詳細的 Unix 時間戳與 RTC 時間對比日誌，方便進行精確的漂移分析。
+- **佈署策略優化**：確定標準佈署路徑為 `/opt/rpi-rtc-manager/`，並統一使用 `root:root` 權限管理。
+
+### 修正
+- **競爭條件 (Race Condition)**：解決了因重複執行（如同時存在 root 與一般使用者的 crontab）導致 DS1302 通訊混亂及時鐘意外歸零的問題。
+- **Systemd 定時優化**：調整了 `rtc-sync.timer` 的啟動間隔，確保在第一次執行同步前，系統網路與時間環境已趨於穩定。
 
 ## [0.1.0] - 2026-03-13
 
-### Added
-- **Initial Release (Lite version)**
-- **DS1302 Driver**: Low-level GPIO bit-banging implementation with BCD support and **Trickle Charge Disable** to protect non-rechargeable batteries.
-- **rtc_init**: Boot-time script to restore system clock from RTC (Phase 4) with **Battery Failure detection**.
-- **rtc_sync**: Periodic synchronization script to update RTC from NTP/System clock (Phase 5).
-- **Configuration System**: Centralized GPIO and log management via `config/rtc.conf`.
-- **Systemd Integration**: Added service and timer files for automated operation.
-- **Test Suite**: `ds1302_test.py` for hardware validation (Phase 2 & 3).
-- **Logging**: Integrated logging to `/opt/rpi-rtc-manager/logs/rpi-rtc-manager.log`.
-- **Documentation**: Added `README.md`, `CHANGELOG.md`, `RPI-RTC-MANAGER-SPEC.md`, and `IMPLEMENTATION-GUIDE.md`.
-- **Validation**: Successfully verified on RPi4 (Hardware & Offline Recovery tests). See `reports/TEST-20260313.md`.
+### 新增
+- **初始版本發佈 (Lite version)**
+- **DS1302 驅動程式**：使用 GPIO Bit-banging 實作，支援 BCD 格式轉換，並內建**涓流充電禁用**功能以保護電池。
+- **rtc_init**：開機初始化腳本，負責從 RTC 救回系統時鐘，並具備電池失效偵測。
+- **rtc_sync**：定期同步腳本，當 NTP 同步成功後自動更新 RTC 時間。
+- **配置系統**：透過 `config/rtc.conf` 集中管理 GPIO 腳位與日誌路徑。
+- **Systemd 整合**：提供服務與計時器設定檔，實現全自動化運行。
+- **測試工具**：提供 `ds1302_test.py` 供硬體通訊驗證使用。
+- **日誌系統**：整合日誌紀錄至 `/opt/rpi-rtc-manager/logs/rpi-rtc-manager.log`。
