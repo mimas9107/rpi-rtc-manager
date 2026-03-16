@@ -30,20 +30,19 @@
 ### 2.1 ds1302.py (Core Driver)
 *   **功能**：提供與 DS1302 晶片的底層通訊。
 *   **特性**：
-    *   **Burst Mode**：採用連讀/連寫模式，確保時間資料的原子性（避免讀到一半跨秒出錯）。
-    *   **WP/CH 管理**：自動處理寫入保護 (Write Protect) 與時鐘停止 (Clock Halt) 位元。
-    *   **涓流充電保護**：自動關閉 Trickle Charge 功能，避免對非充電電池（如 CR2032）錯誤充電。
+    *   **UTC 基準**：RTC 內部僅儲存 UTC 時間，徹底避免時區造成的 8 小時時差 (Timezone Offset Bug)。
+    *   **Burst Mode**：採用連讀/連寫模式，確保時間資料的原子性。
+    *   **WP/CH 管理**：自動處理寫入保護與時鐘停止位元。
+    *   **涓流充電保護**：自動關閉內部充電功能。
 
 ### 2.2 rtc_init.py (Boot Init)
 *   **執行時機**：開機早期 (Network 啟動前)。
-*   **功能**：檢查 RTC 電量，若時間有效（年份 ≥ 2022），則強制將系統時間設定為 RTC 時間。
+*   **功能**：將系統時鐘設定為 RTC 提供的絕對時間戳 (@timestamp)，避免時區解析衝突。
 
 ### 2.3 rtc_sync.py (Runtime Sync)
-*   **執行時機**：由 `systemd timer` 定期觸發（建議每 4-6 小時）。
+*   **執行時機**：由 `systemd timer` 定期觸發。
 *   **功能**：
-    *   **NTP 檢查**：透過 `chronyc` 確認系統時間是否已由網路校準。
-    *   **偏差處理**：偏差 < 30 秒時忽略（減少硬體寫入），偏差 ≥ 30 秒時才校正 RTC。
-    *   **互斥鎖保護**：內建文件鎖 (`/tmp/rtc_sync.lock`)，防止多個實例同時執行導致訊號干擾。
+    *   **互斥鎖保護**：內建 `/tmp/rtc_sync.lock`，防止重複執行導致訊號干擾。
     *   **寫入驗證**：寫入後立即讀回驗證，確保同步成功。
 
 ---
@@ -58,16 +57,11 @@ sudo chmod 755 /opt/rpi-rtc-manager/logs
 ```
 
 ### 3.2 設定腳位
-編輯 `/opt/rpi-rtc-manager/config/rtc.conf` 確保與物理接線一致：
-```conf
-CLK=17
-DAT=27
-RST=22
-```
+編輯 `/opt/rpi-rtc-manager/config/rtc.conf` 確保與物理接線一致。
 
 ### 3.3 註冊系統服務
 ```bash
-# 複製服務檔
+# 複製服務檔與計時器檔
 sudo cp /opt/rpi-rtc-manager/systemd/*.service /etc/systemd/system/
 sudo cp /opt/rpi-rtc-manager/systemd/*.timer /etc/systemd/system/
 
@@ -76,6 +70,16 @@ sudo systemctl daemon-reload
 sudo systemctl enable rtc-init.service
 sudo systemctl enable rtc-sync.timer
 sudo systemctl start rtc-sync.timer
+```
+
+### 3.4 系統時區與 RTC 設定 (重要)
+為確保 Linux 系統正確解讀 RTC 內部的 UTC 時間，**務必執行以下指令**將系統配置為「RTC 使用 UTC 模式」：
+```bash
+# 修正系統配置，避免時區偏移 (+8h Bug)
+sudo timedatectl set-local-rtc 0
+
+# 檢查設定狀況 (RTC in local TZ 應顯示為 no)
+timedatectl
 ```
 
 ---
@@ -88,13 +92,7 @@ sudo systemctl start rtc-sync.timer
 systemctl list-timers --all | grep rtc
 ```
 
-### 4.2 檢查初始化服務
-確認開機校時服務已成功執行過：
-```bash
-systemctl status rtc-init.service
-```
-
-### 4.3 查看日誌
+### 4.2 查看日誌
 檢視最新的同步記錄與偏差分析：
 ```bash
 tail -n 50 /opt/rpi-rtc-manager/logs/rpi-rtc-manager.log
@@ -104,19 +102,19 @@ tail -n 50 /opt/rpi-rtc-manager/logs/rpi-rtc-manager.log
 
 ## 5. 問題排除 (Troubleshooting)
 
-### 5.1 Drift Detected: 17 億秒 (或 0)
-*   **可能原因**：DS1302 的 CH (Clock Halt) 位元被觸發，或是電池沒電/接觸不良。
-*   **對策**：執行一次 `sudo python3 rtc_sync.py`。程式會自動偵測並重新啟動時鐘。若重啟後依然歸零，請檢查電池電壓。
+### 5.1 時間出現 8 小時時差 (+8h Bug)
+*   **現象**：開機後時間比正確時間快或慢了 8 小時。
+*   **對策**：
+    1. 執行 `sudo timedatectl set-local-rtc 0`。
+    2. 執行 `sudo python3 /opt/rpi-rtc-manager/rtc_sync.py` 重新校正 RTC 為 UTC 基準。
 
-### 5.2 競爭條件與通訊損壞
-*   **現象**：Log 出現 `RTC update verification failed!` 或讀取到垃圾數據。
-*   **分析**：可能有多個腳本同時存取 GPIO。
-*   **對策**：本專案已加入 `/tmp/rtc_sync.lock` 文件鎖。請確保沒有其他的 `crontab` 任務在存取同一個 GPIO 腳位。
+### 5.2 Drift Detected: 17 億秒 (或 0)
+*   **可能原因**：DS1302 電池電力耗盡或 CH 位元被觸發。
+*   **對策**：執行一次 `sudo python3 rtc_sync.py` 重新啟動時鐘。
 
-### 5.3 NTP Not Synced
-*   **現象**：`rtc_sync.py` 顯示跳過同步。
-*   **分析**：RPi 4 目前尚未成功連線至 NTP Server。
-*   **對策**：檢查網路連線或 `chronyc tracking` 狀態。這是正常保護機制，防止將錯誤的系統時間寫入 RTC。
+### 5.3 競爭條件與通訊損壞
+*   **現象**：Log 出現 `RTC update verification failed!`。
+*   **對策**：本專案已加入文件鎖保護。請檢查是否同時存在其他的排程 (Crontab) 正在讀寫 GPIO。
 
 ---
 
