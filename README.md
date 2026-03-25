@@ -20,7 +20,9 @@
 └── systemd/            # systemd 服務與計時器設定檔
     ├── rtc-init.service
     ├── rtc-sync.service
-    └── rtc-sync.timer
+    ├── rtc-sync.timer
+    ├── rtc-sync-net.service  # (新增) 網路觸發專用服務
+    └── 99-rtc-sync           # (新增) NetworkManager 觸發腳本
 ```
 
 ---
@@ -40,7 +42,7 @@
 *   **功能**：將系統時鐘設定為 RTC 提供的絕對時間戳 (@timestamp)，避免時區解析衝突。
 
 ### 2.3 rtc_sync.py (Runtime Sync)
-*   **執行時機**：由 `systemd timer` 定期觸發。
+*   **執行時機**：由 `systemd timer` 定期觸發，或由網路事件觸發。
 *   **功能**：
     *   **互斥鎖保護**：內建 `/tmp/rtc_sync.lock`，防止重複執行導致訊號干擾。
     *   **寫入驗證**：寫入後立即讀回驗證，確保同步成功。
@@ -72,7 +74,15 @@ sudo systemctl enable rtc-sync.timer
 sudo systemctl start rtc-sync.timer
 ```
 
-### 3.4 系統時區與 RTC 設定 (重要)
+### 3.4 (新增) 註冊網路觸發同步
+此功能讓 RPi 在連上網路時立即同步 RTC，解決長時間離線後的延遲校正問題。
+```bash
+# 複製 NetworkManager 觸發腳本
+sudo cp /opt/rpi-rtc-manager/systemd/99-rtc-sync /etc/NetworkManager/dispatcher.d/
+sudo chmod +x /etc/NetworkManager/dispatcher.d/99-rtc-sync
+```
+
+### 3.5 系統時區與 RTC 設定 (重要)
 為確保 Linux 系統正確解讀 RTC 內部的 UTC 時間，**務必執行以下指令**將系統配置為「RTC 使用 UTC 模式」：
 ```bash
 # 修正系統配置，避免時區偏移 (+8h Bug)
