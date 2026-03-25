@@ -1,0 +1,14 @@
+[Unit]
+Description=Synchronize RTC on Network Online Event
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/rpi-rtc-manager/rtc_sync.py
+WorkingDirectory=/opt/rpi-rtc-manager
+StandardOutput=append:/opt/rpi-rtc-manager/logs/rtc_manager.log
+StandardError=append:/opt/rpi-rtc-manager/logs/rtc_manager.log
+
+[Install]
+WantedBy=multi-user.target

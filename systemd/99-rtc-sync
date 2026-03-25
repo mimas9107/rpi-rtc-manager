@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# NetworkManager Dispatcher script for RTC Sync
+# This script is called by NetworkManager when a network interface changes state.
+
+INTERFACE=$1 # The interface which has been brought up or down
+ACTION=$2    # The status of the interface (up, down, etc.)
+
+case "$ACTION" in
+    up)
+        # When any interface (eth0, wlan0) comes up, trigger the RTC sync service
+        # This will handle the "back from business trip" scenario.
+        /usr/bin/systemctl start rtc-sync-net.service
+        ;;
+    *)
+        # Ignore other actions
+        exit 0
+        ;;
+esac
