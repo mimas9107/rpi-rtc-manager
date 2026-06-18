@@ -1,3 +1,12 @@
+---
+name:          "IMPLEMENTATION-GUIDE.md"
+description:   "實作指南，提供實作順序、測試流程與除錯方法。"
+created_date:  "2026/03/13 22:34:23"
+modified_date: "2026/06/18 10:00:00"
+project_version: "0.2.0"
+document_version: "1.0.0"
+agent_sign: ['human/mimas9107', 'gemini cli/2.0.0']
+---
 # IMPLEMENTATION-GUIDE.md
 
 Guide for Implementing `rpi-rtc-manager` (Lite)
@@ -6,7 +15,7 @@ Guide for Implementing `rpi-rtc-manager` (Lite)
 
 # 1. Purpose
 
-本文件提供 **實作順序、測試流程與除錯方法**，供工程師或 AI agent 依照 `RPI-RTC-MANAGER-SPEC.md` 進行開發與驗證。
+本文件提供 **實作順序、測試流程與除錯方法**，供工程師或 AI agent 依照 `SPEC.md` 進行開發與驗證。
 
 目標：
 

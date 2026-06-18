@@ -1,3 +1,12 @@
+---
+name:          "README.md"
+description:   "專案說明文件，包含檔案結構、安裝與檢查方法。"
+created_date:  "2026/03/13 22:34:23"
+modified_date: "2026/06/18 10:00:00"
+project_version: "0.2.0"
+document_version: "1.0.0"
+agent_sign: ['human/mimas9107', 'gemini cli/2.0.0']
+---
 # rpi-rtc-manager (Lite)
 
 `rpi-rtc-manager` 是一個專為 Raspberry Pi 4 設計的輕量級 RTC 管理工具，使用 DS1302 模組在無網路環境下提供可靠的系統時間備援。

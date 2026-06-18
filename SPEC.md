@@ -1,3 +1,12 @@
+---
+name:          "SPEC.md"
+description:   "設計規格書，定義系統架構、時間格式與模組規範。"
+created_date:  "2026/03/13 22:34:23"
+modified_date: "2026/06/18 10:00:00"
+project_version: "0.2.0"
+document_version: "1.0.0"
+agent_sign: ['human/mimas9107', 'gemini cli/2.0.0']
+---
 # RPI-RTC-MANAGER-SPEC.md
 
 ## 1. Overview
